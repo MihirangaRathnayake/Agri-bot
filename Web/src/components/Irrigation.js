@@ -8,6 +8,31 @@ const Irrigation = () => {
   const [pump1Status, setPump1Status] = useState(null);
   const [pump2Status, setPump2Status] = useState(null);
   const [isToggling, setIsToggling] = useState(false);
+  const [statusLog, setStatusLog] = useState([]);
+
+  // Function to add status log entry and prevent duplicates
+  const addStatusLogEntry = (pumpNumber, status) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const statusText = status === null ? 'Unknown' : status ? 'ON' : 'OFF';
+    const newEntry = {
+      id: Date.now(),
+      pump: pumpNumber,
+      status: statusText,
+      timestamp: timestamp
+    };
+
+    setStatusLog(prevLog => {
+      // Check if the last entry is the same as the new one
+      const lastEntry = prevLog[prevLog.length - 1];
+      if (lastEntry && lastEntry.pump === pumpNumber && lastEntry.status === statusText) {
+        return prevLog; // Don't add duplicate
+      }
+      
+      // Keep only the last 10 entries to prevent log from growing too large
+      const updatedLog = [...prevLog, newEntry];
+      return updatedLog.slice(-10);
+    });
+  };
 
   useEffect(() => {
     const pump1Ref = ref(database, "/soil/pump1");
@@ -17,18 +42,22 @@ const Irrigation = () => {
       const status = snapshot.val();
       console.log('Pump 1 status received:', status); // Debug log
       setPump1Status(status);
+      addStatusLogEntry(1, status);
     }, (error) => {
       console.error('Error reading pump 1 status:', error);
       setPump1Status(null);
+      addStatusLogEntry(1, null);
     });
 
     const unsubscribe2 = onValue(pump2Ref, (snapshot) => {
       const status = snapshot.val();
       console.log('Pump 2 status received:', status); // Debug log
       setPump2Status(status);
+      addStatusLogEntry(2, status);
     }, (error) => {
       console.error('Error reading pump 2 status:', error);
       setPump2Status(null);
+      addStatusLogEntry(2, null);
     });
 
     return () => {
@@ -93,7 +122,7 @@ const Irrigation = () => {
             }`}
           />
           <span>
-            {(pump1Status === null && pump2Status === null) ? 'Unknown' : 
+            {(pump1Status === null && pump2Status === null) ? '--' : 
              (pump1Status || pump2Status) ? 'Active' : 'Inactive'}
           </span>
         </motion.div>
@@ -168,50 +197,41 @@ const Irrigation = () => {
           </motion.button>
         </div>
 
-        <div className="text-center space-y-4">
-          <motion.div
-            key={pump1Status}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex items-center justify-center space-x-3"
-          >
-            <Droplets className={`w-6 h-6 ${
-              pump1Status === null ? 'text-gray-400' :
-              pump1Status ? 'text-blue-400' : 'text-gray-400'
-            }`} />
-            <p className="text-xl text-gray-300 font-medium">
-              Pump 1 Status: {' '}
-              <span className={`font-bold ${
-                pump1Status === null ? 'text-gray-400' :
-                pump1Status ? 'text-blue-400' : 'text-gray-400'
-              }`}>
-                {pump1Status === null ? 'Unknown' : pump1Status ? 'ON' : 'OFF'}
-              </span>
-            </p>
-          </motion.div>
-
-          <motion.div
-            key={pump2Status}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="flex items-center justify-center space-x-3"
-          >
-            <Droplets className={`w-6 h-6 ${
-              pump2Status === null ? 'text-gray-400' :
-              pump2Status ? 'text-blue-400' : 'text-gray-400'
-            }`} />
-            <p className="text-xl text-gray-300 font-medium">
-              Pump 2 Status: {' '}
-              <span className={`font-bold ${
-                pump2Status === null ? 'text-gray-400' :
-                pump2Status ? 'text-blue-400' : 'text-gray-400'
-              }`}>
-                {pump2Status === null ? 'Unknown' : pump2Status ? 'ON' : 'OFF'}
-              </span>
-            </p>
-          </motion.div>
+        {/* Status Log */}
+        <div className="bg-dark-800/50 rounded-2xl p-6 border border-gray-700/50">
+          <h4 className="text-lg font-semibold text-white mb-4 text-center">Pump Status Log</h4>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {statusLog.length === 0 ? (
+              <p className="text-gray-400 text-center py-4">No status updates yet</p>
+            ) : (
+              statusLog.map((entry) => (
+                <motion.div
+                  key={entry.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="flex items-center space-x-3 py-2 px-3 rounded-lg bg-dark-700/30"
+                >
+                  <Droplets className={`w-4 h-4 ${
+                    entry.status === 'Unknown' ? 'text-gray-400' :
+                    entry.status === 'ON' ? 'text-blue-400' : 'text-gray-400'
+                  }`} />
+                  <span className="text-sm text-gray-300">
+                    Pump {entry.pump} Status: {' '}
+                    <span className={`font-semibold ${
+                      entry.status === 'Unknown' ? 'text-gray-400' :
+                      entry.status === 'ON' ? 'text-blue-400' : 'text-gray-400'
+                    }`}>
+                      {entry.status}
+                    </span>
+                  </span>
+                  <span className="text-xs text-gray-500 ml-auto">
+                    {entry.timestamp}
+                  </span>
+                </motion.div>
+              ))
+            )}
+          </div>
         </div>
 
         {/* Visual pump animations */}
@@ -258,7 +278,6 @@ const Irrigation = () => {
                 className="absolute inset-0 rounded-full border-2 border-blue-400"
               />
             )}
-            <div className="text-center mt-2 text-xs text-gray-400">Pump 1</div>
           </div>
 
           {/* Pump 2 Animation */}

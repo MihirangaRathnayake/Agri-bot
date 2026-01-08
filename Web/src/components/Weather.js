@@ -9,11 +9,39 @@ const Weather = () => {
   const [humidity, setHumidity] = useState('--');
 
   useEffect(() => {
-    // Note: Weather data is not currently being sent by Arduino
-    // This component shows placeholder data until weather sensors are added
-    console.log('Weather component loaded - no data source available');
-    setTemperature('--');
-    setHumidity('--');
+    const tempRef = ref(database, "/weather/temperature");
+    const humidityRef = ref(database, "/weather/humidity");
+    
+    const unsubscribeTemp = onValue(tempRef, (snapshot) => {
+      const temp = snapshot.val();
+      console.log('Temperature received:', temp);
+      if (temp !== null && !isNaN(temp)) {
+        setTemperature(Math.round(temp * 10) / 10); // Round to 1 decimal place
+      } else {
+        setTemperature('--');
+      }
+    }, (error) => {
+      console.error('Error reading temperature:', error);
+      setTemperature('--');
+    });
+
+    const unsubscribeHumidity = onValue(humidityRef, (snapshot) => {
+      const hum = snapshot.val();
+      console.log('Humidity received:', hum);
+      if (hum !== null && !isNaN(hum)) {
+        setHumidity(Math.round(hum * 10) / 10); // Round to 1 decimal place
+      } else {
+        setHumidity('--');
+      }
+    }, (error) => {
+      console.error('Error reading humidity:', error);
+      setHumidity('--');
+    });
+
+    return () => {
+      off(tempRef, 'value', unsubscribeTemp);
+      off(humidityRef, 'value', unsubscribeHumidity);
+    };
   }, []);
 
   return (
@@ -86,20 +114,20 @@ const Weather = () => {
           >
             <div className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${
               temperature === '--' ? 'bg-gray-500/20 text-gray-400' :
-              temperature < 15 ? 'bg-blue-500/20 text-blue-400' :
-              temperature > 30 ? 'bg-red-500/20 text-red-400' :
+              parseFloat(temperature) < 15 ? 'bg-blue-500/20 text-blue-400' :
+              parseFloat(temperature) > 30 ? 'bg-red-500/20 text-red-400' :
               'bg-green-500/20 text-green-400'
             }`}>
               <div className={`w-1.5 h-1.5 rounded-full ${
                 temperature === '--' ? 'bg-gray-400' :
-                temperature < 15 ? 'bg-blue-400' :
-                temperature > 30 ? 'bg-red-400' :
+                parseFloat(temperature) < 15 ? 'bg-blue-400' :
+                parseFloat(temperature) > 30 ? 'bg-red-400' :
                 'bg-green-400'
               }`}></div>
               <span>
                 {temperature === '--' ? 'No Data' :
-                 temperature < 15 ? 'Cold' :
-                 temperature > 30 ? 'Hot' :
+                 parseFloat(temperature) < 15 ? 'Cold' :
+                 parseFloat(temperature) > 30 ? 'Hot' :
                  'Optimal'}
               </span>
             </div>
@@ -161,20 +189,20 @@ const Weather = () => {
           >
             <div className={`inline-flex items-center space-x-1 px-3 py-1 rounded-full text-xs font-medium ${
               humidity === '--' ? 'bg-gray-500/20 text-gray-400' :
-              humidity < 40 ? 'bg-yellow-500/20 text-yellow-400' :
-              humidity > 70 ? 'bg-blue-500/20 text-blue-400' :
+              parseFloat(humidity) < 40 ? 'bg-yellow-500/20 text-yellow-400' :
+              parseFloat(humidity) > 70 ? 'bg-blue-500/20 text-blue-400' :
               'bg-green-500/20 text-green-400'
             }`}>
               <div className={`w-1.5 h-1.5 rounded-full ${
                 humidity === '--' ? 'bg-gray-400' :
-                humidity < 40 ? 'bg-yellow-400' :
-                humidity > 70 ? 'bg-blue-400' :
+                parseFloat(humidity) < 40 ? 'bg-yellow-400' :
+                parseFloat(humidity) > 70 ? 'bg-blue-400' :
                 'bg-green-400'
               }`}></div>
               <span>
                 {humidity === '--' ? 'No Data' :
-                 humidity < 40 ? 'Dry' :
-                 humidity > 70 ? 'Humid' :
+                 parseFloat(humidity) < 40 ? 'Dry' :
+                 parseFloat(humidity) > 70 ? 'Humid' :
                  'Comfortable'}
               </span>
             </div>

@@ -219,7 +219,7 @@ const Tank = () => {
                 tankPumpStatus === null ? 'text-gray-400' :
                 tankPumpStatus ? 'text-cyan-400' : 'text-gray-400'
               }`}>
-                {tankPumpStatus === null ? 'Unknown' : tankPumpStatus ? 'ON' : 'OFF'}
+                {tankPumpStatus === null ? '--' : tankPumpStatus ? 'ON' : 'OFF'}
               </span>
             </p>
           </motion.div>
